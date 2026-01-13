@@ -10,6 +10,7 @@ interface CardProps {
     padding?: 'sm' | 'md' | 'lg' | 'none';
     onClick?: () => void;
     hoverable?: boolean;
+    style?: React.CSSProperties;
 }
 
 export function Card({
@@ -19,6 +20,7 @@ export function Card({
     padding = 'md',
     onClick,
     hoverable = false,
+    style,
 }: CardProps) {
     const variantClasses: Record<string, string> = {
         default: 'card',
@@ -47,6 +49,7 @@ export function Card({
             style={{
                 padding: paddingStyles[padding],
                 cursor: onClick ? 'pointer' : undefined,
+                ...style,
             }}
             onClick={onClick}
             role={onClick ? 'button' : undefined}
