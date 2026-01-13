@@ -1,0 +1,28 @@
+# Render Blueprint - Profile Automation App
+# Deploy: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: profile-automation-app
+    runtime: node
+    region: frankfurt # Free tier available in Frankfurt
+    plan: free # Free instance - sleeps after 15 min inactivity
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/webhook/status
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false # Set manually in dashboard
+      - key: NEXT_PUBLIC_MAKECOM_LEAD_WEBHOOK
+        value: https://hook.eu2.make.com/8xsf9sha1e3c3bdznz5sii2e9j10wpi5
+      - key: MAKECOM_WEBHOOK_SECRET
+        sync: false
+      - key: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+    autoDeploy: true # Auto-deploy on push to main

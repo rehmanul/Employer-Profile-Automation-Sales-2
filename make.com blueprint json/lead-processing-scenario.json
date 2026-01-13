@@ -1,0 +1,383 @@
+{
+    "name": "Profile & Job Automation - Lead Processing",
+    "description": "Automated workflow that processes new leads: scrapes company website, extracts brand info, and generates profile + job advert using AI",
+    "version": 1,
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": 1,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 0
+                },
+                "restore": {
+                    "parameters": {
+                        "hook": {
+                            "label": "Lead Capture Webhook"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "hook",
+                        "type": "hook:gateway-webhook",
+                        "label": "Webhook",
+                        "required": true
+                    }
+                ]
+            },
+            "parameters_docs": {
+                "hook_name": "Lead Capture Webhook",
+                "hook_url": "https://hook.eu2.make.com/8xsf9sha1e3c3bdznz5sii2e9j10wpi5"
+            }
+        },
+        {
+            "id": 2,
+            "module": "http:ActionSendData",
+            "version": 3,
+            "parameters": {},
+            "mapper": {
+                "url": "{{1.callbackUrl}}",
+                "method": "POST",
+                "headers": [
+                    {
+                        "name": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "leadId": "{{1.leadId}}",
+                    "status": "processing",
+                    "message": "Verarbeitung gestartet - Analyse der Website wird vorbereitet",
+                    "progress": 10
+                }
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 0
+                },
+                "restore": {},
+                "expect": [
+                    {
+                        "name": "url",
+                        "type": "url",
+                        "label": "URL"
+                    },
+                    {
+                        "name": "method",
+                        "type": "select",
+                        "label": "Method"
+                    },
+                    {
+                        "name": "headers",
+                        "type": "array",
+                        "label": "Headers"
+                    },
+                    {
+                        "name": "body",
+                        "type": "any",
+                        "label": "Body"
+                    }
+                ]
+            },
+            "notes": "Send status update: Processing started"
+        },
+        {
+            "id": 3,
+            "module": "apify:RunActor",
+            "version": 1,
+            "parameters": {
+                "actor": "apify/website-content-crawler"
+            },
+            "mapper": {
+                "input": {
+                    "startUrls": [
+                        {
+                            "url": "{{1.companyUrl}}"
+                        }
+                    ],
+                    "maxCrawledPages": 10,
+                    "maxCrawlingDepth": 2,
+                    "proxyConfiguration": {
+                        "useApifyProxy": true
+                    }
+                },
+                "waitForFinish": true
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 0
+                },
+                "restore": {
+                    "parameters": {
+                        "actor": {
+                            "label": "Website Content Crawler"
+                        }
+                    }
+                }
+            },
+            "notes": "Crawl the company website to extract content"
+        },
+        {
+            "id": 4,
+            "module": "http:ActionSendData",
+            "version": 3,
+            "parameters": {},
+            "mapper": {
+                "url": "{{1.callbackUrl}}",
+                "method": "POST",
+                "headers": [
+                    {
+                        "name": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "leadId": "{{1.leadId}}",
+                    "status": "scraping",
+                    "message": "Website wird analysiert - Inhalte werden extrahiert",
+                    "progress": 30
+                }
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 0
+                }
+            },
+            "notes": "Send status update: Scraping"
+        },
+        {
+            "id": 5,
+            "module": "brandfetch:GetBrand",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "domain": "{{replace(1.companyUrl; 'https://'; '')}}",
+                "domain_clean": "{{replace(replace(1.companyUrl; 'https://'; ''); 'http://'; '')}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 0
+                },
+                "expect": [
+                    {
+                        "name": "domain",
+                        "type": "text",
+                        "label": "Domain"
+                    }
+                ]
+            },
+            "notes": "Get brand info (logo, colors) from Brandfetch"
+        },
+        {
+            "id": 6,
+            "module": "http:ActionSendData",
+            "version": 3,
+            "parameters": {},
+            "mapper": {
+                "url": "{{1.callbackUrl}}",
+                "method": "POST",
+                "headers": [
+                    {
+                        "name": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "leadId": "{{1.leadId}}",
+                    "status": "analyzing",
+                    "message": "Markeninformationen werden verarbeitet - Logo und Farben erkannt",
+                    "progress": 50
+                }
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1500,
+                    "y": 0
+                }
+            },
+            "notes": "Send status update: Analyzing"
+        },
+        {
+            "id": 7,
+            "module": "google-ai:GenerateContent",
+            "version": 1,
+            "parameters": {
+                "model": "gemini-1.5-flash"
+            },
+            "mapper": {
+                "prompt": "Du bist ein professioneller HR-Texter. Basierend auf den folgenden Website-Inhalten, erstelle ein Unternehmensprofil und eine Stellenanzeige.\n\n## Website-Inhalt:\n{{3.output.text}}\n\n## Jobtitel:\n{{1.jobTitle}}\n\n## Aufgabe:\nErstelle folgendes im JSON-Format:\n\n1. **companyName**: Firmenname\n2. **aboutText**: 150-200 Wörter Über uns Text\n3. **values**: Array mit 4-5 Unternehmenswerten\n4. **benefits**: Array mit 5-6 Mitarbeiter-Benefits\n5. **introduction**: Einleitung für die Stellenanzeige (2-3 Sätze)\n6. **responsibilities**: Array mit 5-6 Hauptaufgaben\n7. **requirements**: Array mit 4-5 Anforderungen\n8. **jobBenefits**: Array mit 5 Benefits für die Stelle\n\nAntworte NUR mit validem JSON, keine Erklärungen.",
+                "temperature": 0.7,
+                "maxOutputTokens": 2000
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1800,
+                    "y": 0
+                }
+            },
+            "notes": "Generate profile and job advert using Gemini AI"
+        },
+        {
+            "id": 8,
+            "module": "http:ActionSendData",
+            "version": 3,
+            "parameters": {},
+            "mapper": {
+                "url": "{{1.callbackUrl}}",
+                "method": "POST",
+                "headers": [
+                    {
+                        "name": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "leadId": "{{1.leadId}}",
+                    "status": "generating",
+                    "message": "KI erstellt Profil und Stellenanzeige",
+                    "progress": 75
+                }
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2100,
+                    "y": 0
+                }
+            },
+            "notes": "Send status update: Generating"
+        },
+        {
+            "id": 9,
+            "module": "json:ParseJSON",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "json": "{{7.output.text}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2400,
+                    "y": 0
+                }
+            },
+            "notes": "Parse the AI response into structured JSON"
+        },
+        {
+            "id": 10,
+            "module": "http:ActionSendData",
+            "version": 3,
+            "parameters": {},
+            "mapper": {
+                "url": "{{1.callbackUrl}}/complete",
+                "method": "POST",
+                "headers": [
+                    {
+                        "name": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "leadId": "{{1.leadId}}",
+                    "status": "complete",
+                    "profile": {
+                        "companyName": "{{9.companyName}}",
+                        "logo": "{{5.logo.url}}",
+                        "aboutText": "{{9.aboutText}}",
+                        "brandColors": {
+                            "primary": "{{5.colors[1].hex}}",
+                            "secondary": "{{5.colors[2].hex}}"
+                        },
+                        "values": "{{9.values}}",
+                        "benefits": "{{9.benefits}}",
+                        "contact": {
+                            "email": "{{1.contactEmail}}",
+                            "website": "{{1.companyUrl}}"
+                        }
+                    },
+                    "jobAdvert": {
+                        "title": "{{1.jobTitle}}",
+                        "location": "Deutschland",
+                        "employmentType": "full-time",
+                        "introduction": "{{9.introduction}}",
+                        "responsibilities": "{{9.responsibilities}}",
+                        "requirements": "{{9.requirements}}",
+                        "benefits": "{{9.jobBenefits}}",
+                        "applicationInfo": {
+                            "email": "{{1.contactEmail}}"
+                        }
+                    }
+                }
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2700,
+                    "y": 0
+                }
+            },
+            "notes": "Send completed profile and job advert to the app"
+        },
+        {
+            "id": 11,
+            "module": "google-email:ActionSendEmail",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "to": "{{1.contactEmail}}",
+                "subject": "Ihr Unternehmensprofil ist fertig! 🎉",
+                "html": "<h1>Hallo!</h1><p>Ihr Unternehmensprofil und Ihre Stellenanzeige wurden erfolgreich erstellt.</p><p><a href='{{1.callbackUrl}}/preview/{{1.leadId}}'>Jetzt ansehen →</a></p><p>Beste Grüße,<br>Das ProfilPro Team</p>"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 3000,
+                    "y": 0
+                }
+            },
+            "notes": "Send email notification to the lead"
+        },
+        {
+            "id": 12,
+            "module": "google-email:ActionSendEmail",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "to": "sales@your-company.com",
+                "subject": "🔔 Neuer Lead: {{9.companyName}} - {{1.jobTitle}}",
+                "html": "<h2>Neuer Lead eingegangen</h2><p><strong>Firma:</strong> {{9.companyName}}</p><p><strong>Website:</strong> {{1.companyUrl}}</p><p><strong>Jobtitel:</strong> {{1.jobTitle}}</p><p><strong>E-Mail:</strong> {{1.contactEmail}}</p><p><strong>Plan:</strong> {{1.planType}}</p><p><a href='{{1.callbackUrl}}/admin'>Im Admin-Dashboard ansehen →</a></p>"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 3000,
+                    "y": 150
+                }
+            },
+            "notes": "Notify sales team about new lead"
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu2.make.com"
+    }
+}

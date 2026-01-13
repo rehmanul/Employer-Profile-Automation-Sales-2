@@ -1,0 +1,447 @@
+{
+    "name": "Automated Employer Profile Creation System - COMPLETE",
+    "flow": [
+        {
+            "id": 11,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": 3703187,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 0
+                },
+                "restore": {
+                    "parameters": {
+                        "hook": {
+                            "label": "Employer Profile Automation - Clean",
+                            "data": {
+                                "editable": "true"
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "hook",
+                        "type": "hook:gateway-webhook",
+                        "label": "Webhook",
+                        "required": true
+                    },
+                    {
+                        "name": "maxResults",
+                        "type": "number",
+                        "label": "Maximum number of results"
+                    }
+                ],
+                "interface": [
+                    {
+                        "name": "website",
+                        "type": "text"
+                    },
+                    {
+                        "name": "timestamp",
+                        "type": "text"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 13,
+            "module": "util:SetVariable2",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "name": "norm_url",
+                "scope": "roundtrip",
+                "value": "{{replace(11.website; \"\"\"/$\"\"\"; \"\")}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 88,
+            "module": "util:SetVariable2",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "name": "brand_domain",
+                "scope": "roundtrip",
+                "value": "{{get(split(replace(replace(13.norm_url; \"https://\"; \"\"); \"http://\"; \"\"); \"/\"); 1)}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 25,
+            "module": "google-drive:createAFolder",
+            "version": 4,
+            "parameters": {
+                "__IMTCONN__": 7740843
+            },
+            "mapper": {
+                "name": "Profil {{88.brand_domain}} {{11.timestamp}}",
+                "role": "writer",
+                "type": "user",
+                "email": "ki.koordinator@recruiting-now.de",
+                "shared": true,
+                "folderId": "/16PlMrkdgJGnZ0CjLufKHOmd1OzeJLI93",
+                "destination": "drive"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 87,
+            "module": "http:MakeRequest",
+            "version": 4,
+            "parameters": {
+                "authenticationType": "noAuth"
+            },
+            "mapper": {
+                "url": "https://api.brandfetch.io/v2/brands/{{88.brand_domain}}",
+                "method": "get",
+                "headers": [
+                    {
+                        "name": "Authorization",
+                        "value": "Bearer rntRA0ixB5ftNaas08Fig94MEUV9WIYRIerZVmPUy_EExmuHQ6xRELbnS4JFlPpOo9GozQ6crcYYUA5yIif0Jw"
+                    }
+                ],
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": true,
+                "requestCompressedContent": true
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 100,
+            "module": "gemini-ai:simpleTextPrompt",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "model": "gemini-2.5-flash",
+                "textPrompt": "Erstelle eine kurze, ansprechende Arbeitgeberbeschreibung als Fließtext auf Basis des folgenden Inhalts: {{87.data.description}}\r\n\r\n- Nenne ein paar Vorteile für Mitarbeiter\r\n\r\nKeine Formatierungen oder Markdown, Markup. Echte Zeilenumbrüche, keine \\n; keine Kommentare\r\n\r\nDer Text muss lesefertig sein und sich direkt an Bewerber:innen richten."
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1500,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 106,
+            "module": "util:SetVariable2",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "name": "matched_benefits",
+                "scope": "roundtrip",
+                "value": "{{replace(if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"kantine\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"canteen\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"cafeteria\"); \"Kantine, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"fortbildung\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"weiterbildung\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"training\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"development\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"academy\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"learning\"); \"Fortbildungen, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"flexible\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"flexibel\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"gleitzeit\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"flextime\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"work-life-balance\"); \"flexible Arbeitszeiten, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"fahrtkosten\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"transportation\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"ticket\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"public transport\"); \"Fahrtkostenerstattung, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"firmenwagen\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"company car\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"vehicle\"); \"Firmenwagen, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"essenszulage\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"meal allowance\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"food subsidy\"); \"Essenszulage, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"kinderbetreuung\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"childcare\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"kindergarten\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"family\"); \"Kinderbetreuung, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"homeoffice\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"home office\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"remote\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"mobile work\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"work from home\"); \"Homeoffice, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"event\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"teamevent\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"team-event\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"party\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"feiern\"); \"Mitarbeiter Events, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"arbeitskleidung\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"workwear\"); \"Arbeitskleidung wird gestellt, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"ausbildung\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"apprenticeship\"); \"bezahlte Ausbildungsmöglichkeiten, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"mitarbeiterbeteiligung\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"equity\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"shares\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"aktien\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"stock options\"); \"Mitarbeiterbeteiligung, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"handy\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"phone\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"smartphone\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"mobile phone\"); \"Mitarbeiterhandy, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"rabatt\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"discount\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"corporate benefits\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"shopping\"); \"Mitarbeiterrabatte, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"internet\"); \"Private Internetnutzung erlaubt, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"parkplatz\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"parking\"); \"Parkplatz, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"altersvorsorge\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"pension\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"retirement\"); \"betriebliche Altersvorsorge, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"gesundheit\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"health\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"fitness\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"sport\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"gym\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"well-being\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"wellbeing\"); \"Gesundheitsmaßnahmen, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"betriebsarzt\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"doctor\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"medical\"); \"Betriebsarzt, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"coaching\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"mentor\"); \"Coaching, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"verkehrsanbindung\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"transport connection\"); \"gute Verkehrsanbindung, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"barrierefrei\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"accessible\"); \"barrierefrei, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"hund\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"dog\"); \"Hunde geduldet, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"urlaub\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"vacation\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"holiday\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"time off\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"leave\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"30 tage\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"weeks vacation\"); \"30+ Tage Urlaub, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"jobrad\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"job-rad\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"bike\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"fahrrad\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"leasing\"); \"JobRad, \"; ) + if(contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"4-tage\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"4 day\") | contains(lower(87.data.description + ifempty(87.data.longDescription; )); \"four day\"); \"4-Tage-Woche, \"; ); \"/,\\\\s*$/\"; )}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1800,
+                    "y": 0
+                },
+                "restore": {
+                    "expect": {
+                        "scope": {
+                            "label": "One cycle"
+                        }
+                    }
+                },
+                "expect": [
+                    {
+                        "name": "name",
+                        "type": "text",
+                        "label": "Variable name",
+                        "required": true
+                    },
+                    {
+                        "name": "scope",
+                        "type": "select",
+                        "label": "Variable lifetime",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "roundtrip",
+                                "execution"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "value",
+                        "type": "any",
+                        "label": "Variable value"
+                    }
+                ],
+                "interface": [
+                    {
+                        "name": "matched_benefits",
+                        "type": "any",
+                        "label": "matched_benefits"
+                    }
+                ],
+                "advanced": true
+            }
+        },
+        {
+            "id": 101,
+            "module": "builtin:BasicFeeder",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "array": "{{87.data.logos}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2100,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 103,
+            "module": "http:MakeRequest",
+            "version": 4,
+            "parameters": {
+                "authenticationType": "noAuth"
+            },
+            "mapper": {
+                "url": "{{101.formats[1].src}}",
+                "method": "get",
+                "shareCookies": false,
+                "parseResponse": false,
+                "allowRedirects": true,
+                "stopOnHttpError": false,
+                "requestCompressedContent": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2400,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 104,
+            "module": "google-drive:uploadAFile",
+            "version": 4,
+            "parameters": {
+                "__IMTCONN__": 7740843
+            },
+            "mapper": {
+                "data": "{{103.data}}",
+                "select": "map",
+                "convert": false,
+                "filename": "{{88.brand_domain}}_logo_{{101.__IMTINDEX__}}.png",
+                "folderId": "{{25.id}}",
+                "destination": "drive"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2700,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 105,
+            "module": "builtin:BasicAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 101
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 3000,
+                    "y": 0
+                },
+                "restore": {
+                    "extra": {
+                        "feeder": {
+                            "label": "Iterator [101]"
+                        },
+                        "target": {
+                            "label": "Custom"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "id": 107,
+            "module": "builtin:BasicFeeder",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "array": "{{slice(87.data.images; 0; 10)}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 3300,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 108,
+            "module": "http:MakeRequest",
+            "version": 4,
+            "parameters": {
+                "authenticationType": "noAuth"
+            },
+            "mapper": {
+                "url": "{{107.formats[1].src}}",
+                "method": "get",
+                "shareCookies": false,
+                "parseResponse": false,
+                "allowRedirects": true,
+                "stopOnHttpError": false,
+                "requestCompressedContent": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 3600,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 109,
+            "module": "google-drive:uploadAFile",
+            "version": 4,
+            "parameters": {
+                "__IMTCONN__": 7740843
+            },
+            "mapper": {
+                "data": "{{108.data}}",
+                "select": "map",
+                "convert": false,
+                "filename": "{{88.brand_domain}}_image_{{107.__IMTINDEX__}}.jpg",
+                "folderId": "{{25.id}}",
+                "destination": "drive"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 3900,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 110,
+            "module": "builtin:BasicAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 107
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 4200,
+                    "y": 0
+                },
+                "restore": {
+                    "extra": {
+                        "feeder": {
+                            "label": "Iterator [107]"
+                        },
+                        "target": {
+                            "label": "Custom"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "id": 26,
+            "module": "google-docs:createADocument",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": 10941496
+            },
+            "mapper": {
+                "name": "Arbeitgeberprofil {{88.brand_domain}}",
+                "footer": false,
+                "header": false,
+                "content": "═══════════════════════════════════════════════════════════════\r\n                    ARBEITGEBERPROFIL\r\n═══════════════════════════════════════════════════════════════\r\n\r\n🏢 UNTERNEHMEN\r\n───────────────────────────────────────────────────────────────\r\nDomain:              {{88.brand_domain}}\r\nName:                {{87.data.name}}\r\n\r\n📝 ARBEITGEBERBESCHREIBUNG (KI-generiert)\r\n───────────────────────────────────────────────────────────────\r\n{{100.result}}\r\n\r\n✅ ERKANNTE BENEFITS\r\n───────────────────────────────────────────────────────────────\r\n{{106.matched_benefits}}\r\n\r\n🎨 MARKENIDENTITÄT\r\n───────────────────────────────────────────────────────────────\r\nQuality Score:       {{87.data.qualityScore}}\r\n\r\n🖼️ LOGOS (hochgeladen in Ordner)\r\n───────────────────────────────────────────────────────────────\r\nPrimary:             {{87.data.logos[1].formats[1].src}}\r\n\r\n📷 BILDER (max. 10, hochgeladen in Ordner)\r\n───────────────────────────────────────────────────────────────\r\n{{87.data.images[1].formats[1].src}}\r\n{{87.data.images[2].formats[1].src}}\r\n{{87.data.images[3].formats[1].src}}\r\n{{87.data.images[4].formats[1].src}}\r\n{{87.data.images[5].formats[1].src}}\r\n{{87.data.images[6].formats[1].src}}\r\n{{87.data.images[7].formats[1].src}}\r\n{{87.data.images[8].formats[1].src}}\r\n{{87.data.images[9].formats[1].src}}\r\n{{87.data.images[10].formats[1].src}}\r\n\r\n🎨 FARBEN\r\n───────────────────────────────────────────────────────────────\r\nPrimary:             {{87.data.colors[1].hex}}\r\nSecondary:           {{87.data.colors[2].hex}}\r\nAccent:              {{87.data.colors[3].hex}}\r\n\r\n🔤 TYPOGRAFIE\r\n───────────────────────────────────────────────────────────────\r\nTitle Font:          {{87.data.fonts[1].name}}\r\nBody Font:           {{87.data.fonts[2].name}}\r\n\r\n🔗 SOZIALE MEDIEN\r\n───────────────────────────────────────────────────────────────\r\n{{87.data.links[1].name}}: {{87.data.links[1].url}}\r\n{{87.data.links[2].name}}: {{87.data.links[2].url}}\r\n{{87.data.links[3].name}}: {{87.data.links[3].url}}\r\n\r\n═══════════════════════════════════════════════════════════════\r\n                 Erstellt am {{11.timestamp}}\r\n═══════════════════════════════════════════════════════════════",
+                "folderId": "{{25.id}}",
+                "destination": "drive"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 4500,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 99,
+            "module": "gateway:WebhookRespond",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "body": "{\r\n  \"success\": true,\r\n  \"domain\": \"{{88.brand_domain}}\",\r\n  \"name\": \"{{87.data.name}}\",\r\n  \"employerText\": \"{{100.result}}\",\r\n  \"description\": \"{{87.data.description}}\",\r\n  \"matchedBenefits\": \"{{106.matched_benefits}}\",\r\n  \"folderUrl\": \"{{25.webViewLink}}\",\r\n  \"docUrl\": \"{{26.webViewLink}}\",\r\n  \"qualityScore\": {{87.data.qualityScore}},\r\n  \"logos\": [{{87.data.logos}}],\r\n  \"images\": [{{87.data.images}}],\r\n  \"colors\": [{{87.data.colors}}],\r\n  \"fonts\": [{{87.data.fonts}}],\r\n  \"links\": [{{87.data.links}}]\r\n}",
+                "status": "200",
+                "headers": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 4800,
+                    "y": 0
+                }
+            }
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu2.make.com",
+        "notes": []
+    }
+}

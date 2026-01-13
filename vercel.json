@@ -1,0 +1,43 @@
+{
+    "version": 2,
+    "name": "profile-automation-app",
+    "framework": "nextjs",
+    "buildCommand": "npm run build",
+    "outputDirectory": ".next",
+    "installCommand": "npm install",
+    "env": {
+        "NEXT_PUBLIC_APP_URL": "@next_public_app_url",
+        "NEXT_PUBLIC_MAKECOM_LEAD_WEBHOOK": "@next_public_makecom_lead_webhook",
+        "MAKECOM_WEBHOOK_SECRET": "@makecom_webhook_secret",
+        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "@next_public_stripe_publishable_key",
+        "STRIPE_SECRET_KEY": "@stripe_secret_key",
+        "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret"
+    },
+    "regions": [
+        "fra1"
+    ],
+    "functions": {
+        "src/app/api/**/*.ts": {
+            "maxDuration": 30
+        }
+    },
+    "headers": [
+        {
+            "source": "/api/(.*)",
+            "headers": [
+                {
+                    "key": "Access-Control-Allow-Origin",
+                    "value": "*"
+                },
+                {
+                    "key": "Access-Control-Allow-Methods",
+                    "value": "GET, POST, PUT, DELETE, OPTIONS"
+                },
+                {
+                    "key": "Access-Control-Allow-Headers",
+                    "value": "Content-Type, Authorization"
+                }
+            ]
+        }
+    ]
+}
